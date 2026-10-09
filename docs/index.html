@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#10192b">
+  <meta name="description" content="用一个 1+1 大于 2 的简单例子，直观理解 Harsanyi 交互。">
+  <title>Harsanyi 交互：怎样算出 1+1 大于 2 的部分？</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2310192b'/%3E%3Ccircle cx='22' cy='32' r='12' fill='%23377dff'/%3E%3Ccircle cx='42' cy='32' r='12' fill='%23ff9f43'/%3E%3Cpath d='M28 32h8' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      --ink: #172033;
+      --muted: #667085;
+      --line: #dbe2ec;
+      --paper: #ffffff;
+      --canvas: #f3f6fb;
+      --blue: #377dff;
+      --orange: #ff9f43;
+      --pink: #e84385;
+      --navy: #10192b;
+      --soft-blue: #edf4ff;
+      --soft-pink: #fff0f6;
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 8% 2%, rgba(55, 125, 255, .13), transparent 24rem),
+        radial-gradient(circle at 94% 22%, rgba(232, 67, 133, .09), transparent 22rem),
+        var(--canvas);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+        "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      font-size: 18px;
+      line-height: 1.8;
+    }
+
+    .progress {
+      position: fixed;
+      inset: 0 auto auto 0;
+      z-index: 10;
+      width: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--blue), var(--pink), var(--orange));
+    }
+
+    header {
+      color: white;
+      background: var(--navy);
+      overflow: hidden;
+      position: relative;
+    }
+
+    header::before,
+    header::after {
+      content: "";
+      position: absolute;
+      border-radius: 999px;
+      filter: blur(2px);
+      opacity: .45;
+    }
+
+    header::before {
+      width: 22rem;
+      height: 22rem;
+      background: var(--blue);
+      top: -15rem;
+      right: -5rem;
+    }
+
+    header::after {
+      width: 16rem;
+      height: 16rem;
+      background: var(--pink);
+      bottom: -13rem;
+      left: -4rem;
+    }
+
+    .hero {
+      position: relative;
+      z-index: 1;
+      width: min(900px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 68px 0 62px;
+    }
+
+    .eyebrow {
+      margin: 0 0 14px;
+      color: #a9c6ff;
+      font-size: .82rem;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      max-width: 780px;
+      margin: 0;
+      font-size: clamp(2rem, 6vw, 4rem);
+      line-height: 1.16;
+      letter-spacing: -.035em;
+    }
+
+    .lede {
+      max-width: 660px;
+      margin: 24px 0 0;
+      color: #cbd5e7;
+      font-size: clamp(1.02rem, 2.2vw, 1.22rem);
+    }
+
+    .hero-equation {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-top: 32px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .token {
+      min-width: 48px;
+      padding: 7px 16px;
+      border: 1px solid rgba(255, 255, 255, .16);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, .08);
+      text-align: center;
+      font-weight: 700;
+    }
+
+    .token.a { background: var(--blue); }
+    .token.b { background: var(--orange); color: #2f210d; }
+    .token.extra { background: var(--pink); }
+
+    main {
+      width: min(820px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 46px 0 88px;
+    }
+
+    article > section,
+    .visual,
+    .calculator {
+      margin-top: 58px;
+    }
+
+    .visual {
+      margin-top: 0;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: var(--paper);
+      box-shadow: 0 18px 50px rgba(16, 25, 43, .09);
+    }
+
+    .visual img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 16px;
+    }
+
+    .caption {
+      margin: 10px 6px 2px;
+      color: var(--muted);
+      font-size: .82rem;
+      text-align: center;
+    }
+
+    h2 {
+      margin: 0 0 18px;
+      color: var(--navy);
+      font-size: clamp(1.45rem, 4.4vw, 2rem);
+      line-height: 1.35;
+      letter-spacing: -.02em;
+    }
+
+    h3 {
+      margin: 28px 0 8px;
+      font-size: 1.08rem;
+    }
+
+    p { margin: 14px 0; }
+
+    .plain-quote {
+      margin: 28px 0;
+      padding: 18px 22px;
+      border-left: 5px solid var(--pink);
+      border-radius: 0 14px 14px 0;
+      background: var(--soft-pink);
+      font-size: 1.08rem;
+      font-weight: 650;
+    }
+
+    .score-table {
+      width: 100%;
+      margin: 24px 0;
+      border-collapse: separate;
+      border-spacing: 0;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--paper);
+    }
+
+    .score-table th,
+    .score-table td {
+      padding: 13px 18px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+    }
+
+    .score-table tr:last-child td { border-bottom: 0; }
+    .score-table th { color: var(--muted); font-size: .82rem; }
+    .score-table td:last-child,
+    .score-table th:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+    .score-table tr:last-child { color: var(--pink); font-weight: 750; }
+
+    .formula {
+      margin: 24px 0;
+      padding: 20px;
+      overflow-x: auto;
+      border-radius: 16px;
+      color: white;
+      background: var(--navy);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: clamp(.92rem, 3vw, 1.1rem);
+      line-height: 1.55;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .calculator {
+      padding: clamp(22px, 5vw, 38px);
+      border: 1px solid #cbd9f2;
+      border-radius: 24px;
+      background: linear-gradient(145deg, #fff, var(--soft-blue));
+      box-shadow: 0 18px 50px rgba(55, 125, 255, .09);
+    }
+
+    .calculator h2 { margin-bottom: 6px; }
+    .calculator-intro { margin-top: 0; color: var(--muted); }
+
+    .inputs {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin: 24px 0;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: .78rem;
+      font-weight: 650;
+    }
+
+    input[type="number"] {
+      width: 100%;
+      min-height: 48px;
+      padding: 8px 10px;
+      border: 1px solid #b9c7dd;
+      border-radius: 12px;
+      outline: none;
+      color: var(--ink);
+      background: white;
+      font: inherit;
+      font-size: 1rem;
+      text-align: center;
+    }
+
+    input[type="number"]:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 4px rgba(55, 125, 255, .12);
+    }
+
+    .live-result {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px 20px;
+      padding: 18px 20px;
+      border-radius: 16px;
+      color: white;
+      background: var(--navy);
+    }
+
+    .live-formula {
+      overflow-wrap: anywhere;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .88rem;
+    }
+
+    .live-value {
+      min-width: 104px;
+      color: #ff88b7;
+      font-size: 1.65rem;
+      font-weight: 800;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .meaning {
+      margin: 12px 2px 0;
+      color: var(--muted);
+      font-size: .9rem;
+    }
+
+    .sign-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-top: 24px;
+    }
+
+    .sign-card {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--paper);
+    }
+
+    .sign-card strong { display: block; margin-bottom: 6px; }
+    .sign-card p { margin: 0; color: var(--muted); font-size: .88rem; line-height: 1.65; }
+    .positive strong { color: var(--pink); }
+    .negative strong { color: #7656d6; }
+    .zero strong { color: var(--blue); }
+
+    .steps {
+      margin: 24px 0;
+      padding: 0;
+      list-style: none;
+      counter-reset: step;
+    }
+
+    .steps li {
+      position: relative;
+      margin: 14px 0;
+      padding: 5px 0 5px 52px;
+      counter-increment: step;
+    }
+
+    .steps li::before {
+      content: counter(step);
+      position: absolute;
+      left: 0;
+      top: 0;
+      display: grid;
+      width: 36px;
+      height: 36px;
+      place-items: center;
+      border-radius: 50%;
+      color: white;
+      background: var(--blue);
+      font-size: .84rem;
+      font-weight: 800;
+    }
+
+    .complexity {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      margin: 22px 0;
+      padding-bottom: 4px;
+    }
+
+    .complexity span {
+      flex: 1 0 150px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: white;
+      text-align: center;
+    }
+
+    .complexity b { display: block; color: var(--pink); font-size: 1.2rem; }
+
+    footer {
+      padding: 30px 20px calc(30px + env(safe-area-inset-bottom));
+      color: #aab5c9;
+      background: var(--navy);
+      text-align: center;
+      font-size: .82rem;
+    }
+
+    @media (max-width: 640px) {
+      body { font-size: 17px; }
+      .hero { width: min(100% - 32px, 900px); padding: 50px 0 46px; }
+      main { width: min(100% - 24px, 820px); padding-top: 24px; }
+      .visual { border-radius: 18px; padding: 7px; }
+      article > section, .calculator { margin-top: 46px; }
+      .inputs { grid-template-columns: repeat(2, 1fr); }
+      .sign-grid { grid-template-columns: 1fr; }
+      .live-result { align-items: flex-start; }
+      .live-value { text-align: left; }
+      .score-table th, .score-table td { padding: 11px 13px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="progress" id="progress" aria-hidden="true"></div>
+
+  <header>
+    <div class="hero">
+      <p class="eyebrow">Model interpretation · 模型解释</p>
+      <h1>怎样算出“1 + 1 大于 2”的部分？</h1>
+      <p class="lede">Harsanyi 交互把组合产生的额外效果单独找出来。理解它，只需要一个 A、一个 B，和四次简单的测试。</p>
+      <div class="hero-equation" aria-label="A 加 B 产生额外四分">
+        <span class="token a">A</span><span>+</span>
+        <span class="token b">B</span><span>=</span>
+        <span>各自贡献</span><span>+</span>
+        <span class="token extra">额外 4</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <article>
+      <figure class="visual">
+        <img src="assets/harsanyi-interaction-explainer.gif" width="1000" height="720" alt="动画演示：A 单独得 2 分，B 单独得 3 分，A 和 B 一起得 9 分，多出的 4 分就是 Harsanyi 交互">
+        <figcaption class="caption">完整动画约 10 秒，播放结束后会自动循环。</figcaption>
+      </figure>
+
+      <section>
+        <h2>先看一个最简单的例子</h2>
+        <p>假设有两个因素，叫作 A 和 B。我们分别测试什么都不用、只用 A、只用 B，以及同时使用 A 和 B。</p>
+
+        <table class="score-table">
+          <thead><tr><th>使用的因素</th><th>得分 v(S)</th></tr></thead>
+          <tbody>
+            <tr><td>什么都不用</td><td>0</td></tr>
+            <tr><td>只用 A</td><td>2</td></tr>
+            <tr><td>只用 B</td><td>3</td></tr>
+            <tr><td>同时使用 A 和 B</td><td>9</td></tr>
+          </tbody>
+        </table>
+
+        <p>如果 A 和 B 互不影响，一起出现应该得到 <strong>2 + 3 = 5</strong>。但实际得分是 9，比预期多了 4。</p>
+        <blockquote class="plain-quote">这多出来的 4 既不只属于 A，也不只属于 B。它只属于组合 {A, B}。</blockquote>
+      </section>
+
+      <section>
+        <h2>公式只是在做“总效果减去已有贡献”</h2>
+        <div class="formula" role="math">I({A, B}) = v({A, B}) − v({A}) − v({B}) + v(∅)</div>
+        <p>代入例子中的数字：</p>
+        <div class="formula" role="math">I({A, B}) = 9 − 2 − 3 + 0 = 4</div>
+        <p>最后加回空集的基础分，是因为减掉 A 和 B 的单独得分时，基础分被重复减了两次。这与容斥原理是同一个思路。</p>
+      </section>
+
+      <section class="calculator" aria-labelledby="calculator-title">
+        <h2 id="calculator-title">自己改数字试试看</h2>
+        <p class="calculator-intro">修改四种情况的得分，交互值会立即更新。</p>
+        <div class="inputs">
+          <label>v(∅)<input id="v0" type="number" value="0" step="1" inputmode="decimal"></label>
+          <label>v(A)<input id="vA" type="number" value="2" step="1" inputmode="decimal"></label>
+          <label>v(B)<input id="vB" type="number" value="3" step="1" inputmode="decimal"></label>
+          <label>v(A,B)<input id="vAB" type="number" value="9" step="1" inputmode="decimal"></label>
+        </div>
+        <div class="live-result" aria-live="polite">
+          <span class="live-formula" id="liveFormula">9 − 2 − 3 + 0</span>
+          <span class="live-value" id="liveValue">I = 4</span>
+        </div>
+        <p class="meaning" id="meaning">正交互：A 和 B 在互相增强。</p>
+      </section>
+
+      <section>
+        <h2>正、负、零分别意味着什么？</h2>
+        <div class="sign-grid">
+          <div class="sign-card positive"><strong>I &gt; 0 · 协同</strong><p>组合效果高于简单相加，两个因素在互相增强。</p></div>
+          <div class="sign-card negative"><strong>I &lt; 0 · 干扰</strong><p>组合效果低于简单相加，两个因素在互相削弱。</p></div>
+          <div class="sign-card zero"><strong>I = 0 · 独立</strong><p>组合效果恰好等于各自效果相加，没有额外影响。</p></div>
+        </div>
+      </section>
+
+      <section>
+        <h2>不只有两个因素</h2>
+        <p>有 A、B、C 三个因素时，除了单独贡献和两两交互，还可以计算三者共同产生的三阶交互。</p>
+        <blockquote class="plain-quote">一个组合的 Harsanyi 交互，就是这个组合的总效果中，不能被任何更小组合解释的部分。</blockquote>
+        <p>对任意集合 S，通用公式是：</p>
+        <div class="formula" role="math">I(S) = Σ<sub>T⊆S</sub> (−1)<sup>|S|−|T|</sup> v(T)</div>
+      </section>
+
+      <section>
+        <h2>怎样用它解释语言模型？</h2>
+        <p>可以把 prompt 中的 token 当作玩家，把模型生成目标答案的 log-probability 当作得分 v(S)。</p>
+        <ol class="steps">
+          <li>枚举 prompt token 的所有子集。</li>
+          <li>保留子集里的 token，其余位置换成 baseline。</li>
+          <li>计算每个子集支持目标答案的程度。</li>
+          <li>用 Möbius transform 得到每个组合的交互值。</li>
+        </ol>
+        <p>高阶交互能够告诉我们：哪些 token 必须一起出现，才会明显提高或降低某个答案的概率。模型利用的可能不是孤立关键词，而是它们共同组成的语义模式。</p>
+      </section>
+
+      <section>
+        <h2>唯一需要警惕：组合数量增长很快</h2>
+        <p>精确计算需要检查全部子集。玩家数量是 n，子集数量就是 2<sup>n</sup>。</p>
+        <div class="complexity" aria-label="玩家数量与子集数量">
+          <span>10 个玩家<b>1,024</b>个子集</span>
+          <span>15 个玩家<b>32,768</b>个子集</span>
+          <span>20 个玩家<b>1,048,576</b>个子集</span>
+        </div>
+        <p>因此解释语言模型时，通常要使用较短的 prompt，或者先把多个 token 合成一个 player group。</p>
+      </section>
+
+      <section>
+        <h2>最后记住这一句话</h2>
+        <blockquote class="plain-quote">Harsanyi 交互不是在问“谁最重要”，而是在问“哪些因素一起出现时，产生了无法单独解释的新效果”。</blockquote>
+      </section>
+    </article>
+  </main>
+
+  <footer>Harsanyi Interaction · 一个从 1 + 1 &gt; 2 开始的直观解释</footer>
+
+  <script>
+    (function () {
+      var ids = ["v0", "vA", "vB", "vAB"];
+      var inputs = ids.map(function (id) { return document.getElementById(id); });
+      var formula = document.getElementById("liveFormula");
+      var value = document.getElementById("liveValue");
+      var meaning = document.getElementById("meaning");
+      var progress = document.getElementById("progress");
+
+      function cleanNumber(number) {
+        return Number.isInteger(number) ? String(number) : number.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+      }
+
+      function updateCalculator() {
+        var numbers = inputs.map(function (input) {
+          var parsed = Number(input.value);
+          return Number.isFinite(parsed) ? parsed : 0;
+        });
+        var interaction = numbers[3] - numbers[1] - numbers[2] + numbers[0];
+        formula.textContent = cleanNumber(numbers[3]) + " − " + cleanNumber(numbers[1]) + " − " + cleanNumber(numbers[2]) + " + " + cleanNumber(numbers[0]);
+        value.textContent = "I = " + cleanNumber(interaction);
+        meaning.textContent = interaction > 0
+          ? "正交互：A 和 B 在互相增强。"
+          : interaction < 0
+            ? "负交互：A 和 B 在互相干扰。"
+            : "零交互：A 和 B 的效果可以简单相加。";
+      }
+
+      function updateProgress() {
+        var root = document.documentElement;
+        var total = root.scrollHeight - root.clientHeight;
+        progress.style.width = (total > 0 ? root.scrollTop / total * 100 : 0) + "%";
+      }
+
+      inputs.forEach(function (input) { input.addEventListener("input", updateCalculator); });
+      window.addEventListener("scroll", updateProgress, { passive: true });
+      updateCalculator();
+      updateProgress();
+    }());
+  </script>
+</body>
+</html>
