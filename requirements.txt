@@ -1,0 +1,3 @@
+# Only the LLM adapter needs PyTorch.  The mathematical core in harsanyi.py
+# uses the Python standard library and works without installing this file.
+torch>=2.0
